@@ -215,3 +215,72 @@ final_chain = {"recipe": chef_chain} | veg_chain
 
 final_chain.invoke({"cuisine": "indian"})
 ```
+
+## Model IO ([docs](https://python.langchain.com/docs/modules/))
+
+- \***\*FewShotPromptTemplate\*\***
+  - 특정 형식으로 답변할 수 있도록 해줌
+
+```python
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import PromptTemplate
+from langchain.prompts.few_shot import FewShotPromptTemplate
+from langchain.callbacks import StreamingStdOutCallbackHandler
+
+chat = ChatOpenAI(
+    temperature=0.1,
+    streaming=True,
+    callbacks=[StreamingStdOutCallbackHandler()],
+)
+
+examples = [
+    {
+        "question": "What do you know about France?",
+        "answer": """
+        Here is what I know:
+        Capital: Paris
+        Language: French
+        Food: Wine and Cheese
+        Currency: Euro
+        """,
+    },
+    {
+        "question": "What do you know about Italy?",
+        "answer": """
+        I know this:
+        Capital: Rome
+        Language: Italian
+        Food: Pizza and Pasta
+        Currency: Euro
+        """,
+    },
+    {
+        "question": "What do you know about Greece?",
+        "answer": """
+        I know this:
+        Capital: Athens
+        Language: Greek
+        Food: Souvlaki and Feta Cheese
+        Currency: Euro
+        """,
+    },
+]
+
+example_template = """
+    Human: {question}
+    AI: {answer}
+"""
+
+example_prompt = PromptTemplate.from_template(example_template)
+
+prompt = FewShotPromptTemplate(
+    example_prompt=example_prompt,
+    examples=examples,
+    suffix="Human: What do you know about {country}?",
+    input_variables=["country"],
+)
+
+chain = prompt | chat
+
+chain.invoke({"country": "Germany"})
+```

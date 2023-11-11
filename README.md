@@ -2,16 +2,12 @@
 
 랭체인으로 AI 웹 서비스 7개 만들기
 
-## What
+| 프로젝트 기간 | 23.11.11 ~                                                                                                                              |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 프로젝트 목적 | Langchain, Language Models 에 대한 기본 이해, 자체 데이터에 GPT-4를 사용하는 방법, 커스텀 자율 에이전트(Autonomous Agent)를 만드는 방법 |
+| Github        | https://github.com/Jinwook-Song/fullstack-gpt                                                                                           |
 
-- Langchain, Language Models 에 대한 기본 이해
-- 자체 데이터에 GPT-4를 사용하는 방법
-- 커스텀 자율 에이전트(Autonomous Agent)를 만드는 방법
-- etc
-
-## How
-
-지금 당장 활용 할 수 있는 실전형 AI 웹서비스 7개를 직접 구현하며 배웁니다.
+## TODOS
 
 - AI 웹 서비스 (6종) : DocumentGPT, PrivateGPT, QuizGPT, SiteGPT, MeetingGPT, InvestorGPT
 - ChatGPT 플러그인 (1종) : ChefGPT
@@ -58,3 +54,39 @@ AI가 자료 조사도 알아서 척척 해 줍니다.
 요즘 핫한 ChatGPT 플러그인? 직접 구현해 봐요!
 
 유저가 ChatGPT 플러그인 스토어에서 설치할 수 있는 ChatGPT 플러그인입니다. 이 플러그인을 통해 유저는 ChatGPT 인터페이스에서 바로 레시피를 검색하고 조리법을 얻을 수 있습니다. 또한 ChatGPT 플러그인에서 OAuth 인증을 구현하는 방법에 대해서도 배웁니다.
+
+## LangChain
+
+- prompt & template
+
+```python
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import PromptTemplate, ChatPromptTemplate
+
+chat = ChatOpenAI(temperature=0.1)  # randomness of response
+
+template = PromptTemplate.from_template(
+    "What is the distance between {country_a} and {country_b}",
+)
+
+prompt = template.format(country_a="Mexico", country_b="Korea")
+
+chat.predict(prompt)
+
+template = ChatPromptTemplate.from_messages(
+    [
+        ("system", "You are a geography expert. And you only reply in {language}."),
+        ("ai", "Ciao, mi chiamo {name}!"),
+        (
+            "human",
+            "What is the distance between {country_a} and {country_b}. Also, what is your name?",
+        ),
+    ]
+)
+
+prompt = template.format_messages(
+    language="Greek", name="Socrates", country_a="Mexico", country_b="Korea"
+)
+
+chat.predict_messages(prompt)
+```

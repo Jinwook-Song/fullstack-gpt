@@ -567,3 +567,15 @@ memory.save_context(
 
 memory.load_memory_variables({})
 ```
+
+- ConversationBufferWindowMemory
+  저장할 범위 지정
+
+```python
+from langchain.memory import ConversationBufferWindowMemory
+
+memory = ConversationBufferWindowMemory(
+    return_messages=True,
+    k=4,
+)
+```

@@ -550,3 +550,20 @@ chat = ChatOpenAI(
 
 chat.predict("How do you make italian pasta")
 ```
+
+## Memory
+
+- ConversationBufferMemory
+
+```python
+from langchain.memory import ConversationBufferMemory
+
+memory = ConversationBufferMemory(return_messages=True)
+
+memory.save_context(
+    {"input": "Hi"},
+    {"output": "How are you?"},
+)
+
+memory.load_memory_variables({})
+```

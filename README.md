@@ -528,3 +528,25 @@ chain.invoke(
     }
 )
 ```
+
+- caching
+
+```python
+from langchain.chat_models import ChatOpenAI
+from langchain.callbacks import StreamingStdOutCallbackHandler
+from langchain.prompts import PromptTemplate
+from langchain.prompts.pipeline import PipelinePromptTemplate
+from langchain.globals import set_llm_cache, set_debug
+from langchain.cache import InMemoryCache, SQLiteCache
+
+set_llm_cache(SQLiteCache("cache.db"))
+set_debug(True)
+
+chat = ChatOpenAI(
+    temperature=0.1,
+    streaming=True,
+    callbacks=[StreamingStdOutCallbackHandler()],
+)
+
+chat.predict("How do you make italian pasta")
+```

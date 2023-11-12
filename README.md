@@ -458,14 +458,13 @@ prompt = FewShotPromptTemplate(
 prompt.format(country="Brazil")
 ```
 
-- \***\*FewShotPromptTemplate\*\***
-  - 특정 형식으로 답변할 수 있도록 해줌
+- Serialization with PipelinePromptTemplate
 
 ```python
 from langchain.chat_models import ChatOpenAI
+from langchain.callbacks import StreamingStdOutCallbackHandler
 from langchain.prompts import PromptTemplate
-from langchain.prompts.few_shot import FewShotPromptTemplate
-from langchain.callbacks import StreamingStdOutCallbackHandler
+from langchain.prompts.pipeline import PipelinePromptTemplate
 
 chat = ChatOpenAI(
     temperature=0.1,
@@ -473,196 +472,59 @@ chat = ChatOpenAI(
     callbacks=[StreamingStdOutCallbackHandler()],
 )
 
-examples = [
-    {
-        "question": "What do you know about France?",
-        "answer": """
-        Here is what I know:
-        Capital: Paris
-        Language: French
-        Food: Wine and Cheese
-        Currency: Euro
-        """,
-    },
-    {
-        "question": "What do you know about Italy?",
-        "answer": """
-        I know this:
-        Capital: Rome
-        Language: Italian
-        Food: Pizza and Pasta
-        Currency: Euro
-        """,
-    },
-    {
-        "question": "What do you know about Greece?",
-        "answer": """
-        I know this:
-        Capital: Athens
-        Language: Greek
-        Food: Souvlaki and Feta Cheese
-        Currency: Euro
-        """,
-    },
-]
+intro = PromptTemplate.from_template(
+    """
+    You are a role playing assistant.
+    And you are impersonating a {character}
+    """
+)
 
-example_template = """
+example = PromptTemplate.from_template(
+    """
+    This is an example of how you talk:
+    Human: {example_question}
+    You: {example_answer}
+    """
+)
+
+start = PromptTemplate.from_template(
+    """
+    Start now!
+
     Human: {question}
-    AI: {answer}
-"""
-
-example_prompt = PromptTemplate.from_template(example_template)
-
-prompt = FewShotPromptTemplate(
-    example_prompt=example_prompt,
-    examples=examples,
-    suffix="Human: What do you know about {country}?",
-    input_variables=["country"],
+    You:
+    """
 )
 
-chain = prompt | chat
+final = PromptTemplate.from_template(
+    """
+    {intro}
 
-chain.invoke({"country": "Germany"})
-```
+    {example}
 
-- FewShotChatMessagePromptTemplate
-
-```python
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from langchain.prompts.few_shot import FewShotChatMessagePromptTemplate
-from langchain.callbacks import StreamingStdOutCallbackHandler
-
-chat = ChatOpenAI(
-    temperature=0.1,
-    streaming=True,
-    callbacks=[StreamingStdOutCallbackHandler()],
+    {start}
+    """
 )
 
-examples = [
-    {
-        "country": "France",
-        "answer": """
-        Here is what I know:
-        Capital: Paris
-        Language: French
-        Food: Wine and Cheese
-        Currency: Euro
-        """,
-    },
-    {
-        "country": "Italy",
-        "answer": """
-        I know this:
-        Capital: Rome
-        Language: Italian
-        Food: Pizza and Pasta
-        Currency: Euro
-        """,
-    },
-    {
-        "country": "Greece",
-        "answer": """
-        I know this:
-        Capital: Athens
-        Language: Greek
-        Food: Souvlaki and Feta Cheese
-        Currency: Euro
-        """,
-    },
+pipeline_prompts = [
+    ("intro", intro),
+    ("example", example),
+    ("start", start),
 ]
 
-# only to format examples
-example_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("human", "What do you know about {country}?"),
-        ("ai", "{answer}"),
-    ]
+full_prompt = PipelinePromptTemplate(
+    pipeline_prompts=pipeline_prompts,
+    final_prompt=final,
 )
 
-example_prompt = FewShotChatMessagePromptTemplate(
-    example_prompt=example_prompt,
-    examples=examples,
-)
+chain = full_prompt | chat
 
-final_prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system", "You are a geography expert, you give short answers."),
-        example_prompt,
-        ("human", "What do you know about {country}?"),
-    ]
-)
-
-chain = final_prompt | chat
-
-chain.invoke({"country": "Korea"})
-```
-
-- \***\*LengthBasedExampleSelector\*\***
-
-```python
-from langchain.chat_models import ChatOpenAI
-from langchain.callbacks import StreamingStdOutCallbackHandler
-from langchain.prompts import ChatPromptTemplate, PromptTemplate
-from langchain.prompts.few_shot import (
-    FewShotPromptTemplate,
-    FewShotChatMessagePromptTemplate,
-)
-from langchain.prompts.example_selector import LengthBasedExampleSelector
-
-chat = ChatOpenAI(
-    temperature=0.1,
-    streaming=True,
-    callbacks=[StreamingStdOutCallbackHandler()],
-)
-
-examples = [
+chain.invoke(
     {
-        "question": "What do you know about France?",
-        "answer": """
-        Here is what I know:
-        Capital: Paris
-        Language: French
-        Food: Wine and Cheese
-        Currency: Euro
-        """,
-    },
-    {
-        "question": "What do you know about Italy?",
-        "answer": """
-        I know this:
-        Capital: Rome
-        Language: Italian
-        Food: Pizza and Pasta
-        Currency: Euro
-        """,
-    },
-    {
-        "question": "What do you know about Greece?",
-        "answer": """
-        I know this:
-        Capital: Athens
-        Language: Greek
-        Food: Souvlaki and Feta Cheese
-        Currency: Euro
-        """,
-    },
-]
-
-example_prompt = PromptTemplate.from_template("Human: {question}\nAI:{answer}")
-
-example_selector = LengthBasedExampleSelector(
-    examples=examples,
-    example_prompt=example_prompt,
-    max_length=180,
+        "character": "Pirate",
+        "example_question": "What is your location?",
+        "example_answer": "Arrrrg! That is a secret!! Arg arg!",
+        "question": "What is your favorite food?",
+    }
 )
-
-prompt = FewShotPromptTemplate(
-    example_prompt=example_prompt,
-    example_selector=example_selector,
-    suffix="Human: What do you know about {country}?",
-    input_variables=["country"],
-)
-
-prompt.format(country="Brazil")
 ```

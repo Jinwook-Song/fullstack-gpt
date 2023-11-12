@@ -601,3 +601,27 @@ add_message(
     "Wow that is so cool!",
 )
 ```
+
+- ConversationSummaryBufferMemory
+  token limit 이전 message에 대해서 summary
+
+```python
+from langchain.memory import ConversationSummaryBufferMemory
+from langchain.chat_models import ChatOpenAI
+
+llm = ChatOpenAI(temperature=0.1)
+
+memory = ConversationSummaryBufferMemory(
+    llm=llm,
+    max_token_limit=100,
+    return_messages=True,
+)
+
+def add_message(input, output):
+    memory.save_context({"input": input}, {"output": output})
+
+def get_history():
+    return memory.load_memory_variables({})
+
+add_message("Hi I'm Jinwook, I live in South Korea", "Wow that is so cool!")
+```

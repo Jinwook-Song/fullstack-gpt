@@ -644,3 +644,38 @@ def add_message(input, output):
 
 add_message("Hi I'm Jinwook, I live in South Korea", "Wow that is so cool!")
 ```
+
+- \***\*Memory on LLMChain\*\***
+  chat history에 대한 정보를 넣어준다
+
+```python
+from langchain.memory import ConversationSummaryBufferMemory
+from langchain.chat_models import ChatOpenAI
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+
+llm = ChatOpenAI(temperature=0.1)
+
+memory = ConversationSummaryBufferMemory(
+    llm=llm,
+    max_token_limit=120,
+    memory_key="chat_history",
+)
+
+template = """
+    You are a helpful AI talking to a human.
+
+    {chat_history}
+    Human:{question}
+    You:
+"""
+
+chain = LLMChain(
+    llm=llm,
+    memory=memory,
+    prompt=PromptTemplate.from_template(template),
+    verbose=True,
+)
+
+chain.predict(question="My name is jinwook")
+```

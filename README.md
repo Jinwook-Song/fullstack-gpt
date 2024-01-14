@@ -773,17 +773,16 @@ RAG에 대한 간략한 개요는 다음과 같습니다:
 [docs](https://python.langchain.com/docs/modules/chains/document/)
 
 - load and split document
-
   - UnstructuredFileLoader 임의의 포맷 문서를 load 할 수 있다
   - RecursiveCharacterTextSplitter
   - CharacterTextSplitter (seperator를 지정할 수 있다)
     - chunk_overlap 이전의 text를 어느정도로 겹치게 나눌지
-
+    - from_tiktoken_encoder: token을 기반으로 모델이 텍스트를 세는것과 동일하게
   ```python
   from langchain.document_loaders import UnstructuredFileLoader
   from langchain.text_splitter import CharacterTextSplitter
 
-  text_splitter = CharacterTextSplitter(
+  text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
       separator="\n",
       chunk_size=600,
       chunk_overlap=100,
@@ -795,3 +794,91 @@ RAG에 대한 간략한 개요는 다음과 같습니다:
 
   len(docs)
   ```
+- Embedding
+  text를 vector로 변환
+
+```python
+from langchain.embeddings import OpenAIEmbeddings
+
+embedder = OpenAIEmbeddings()
+
+# get vertor for the text
+vector = embedder.embed_documents(texts=["hello", "how", "are", "you"])
+
+vector
+```
+
+```python
+from langchain.document_loaders import UnstructuredFileLoader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores.chroma import Chroma
+
+text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+    separator="\n",
+    chunk_size=600,
+    chunk_overlap=100,
+)
+
+loader = UnstructuredFileLoader("./files/chapter_one.docx")
+
+documents = loader.load_and_split(text_splitter=text_splitter)
+
+vectorstore = Chroma.from_documents(documents=documents, embedding=OpenAIEmbeddings())
+```
+
+- RetrievalQA
+  `stuff`
+  : This chain takes a list of documents and formats them all into a prompt, then passes that prompt to an LLM. It passes ALL documents, so you should make sure it fits within the context window the LLM you are using.
+  `refine`
+  : This chain collapses documents by generating an initial answer based on the first document and then looping over the remaining documents to *refine* its answer. This operates sequentially, so it cannot be parallelized. It is useful in similar situatations as MapReduceDocuments Chain, but for cases where you want to build up an answer by refining the previous answer (rather than parallelizing calls).
+  `map-reduce`
+  : This chain first passes each document through an LLM, then reduces them using the ReduceDocumentsChain. Useful in the same situations as ReduceDocumentsChain, but does an initial LLM call before trying to reduce the documents.
+  `map-rerank`
+  : This calls on LLM on each document, asking it to not only answer but also produce a score of how confident it is. The answer with the highest confidence is then returned. This is useful when you have a lot of documents, but only want to answer based on a single document, rather than trying to combine answers (like Refine and Reduce methods do).
+
+```python
+from langchain.chat_models import ChatOpenAI
+from langchain.document_loaders import UnstructuredFileLoader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
+from langchain.vectorstores.chroma import Chroma
+from langchain.vectorstores.faiss import FAISS
+from langchain.chains import RetrievalQA
+from langchain.storage import LocalFileStore
+
+cache_dir = LocalFileStore("./.cache/")
+
+llm = ChatOpenAI()
+
+text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+    separator="\n",
+    chunk_size=600,
+    chunk_overlap=100,
+)
+
+loader = UnstructuredFileLoader("./files/chapter_one.docx")
+
+documents = loader.load_and_split(text_splitter=text_splitter)
+
+embeddings = OpenAIEmbeddings()
+
+cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
+    embeddings,
+    cache_dir,
+)
+
+vectorstore = FAISS.from_documents(
+    documents=documents,
+    embedding=cached_embeddings,
+)
+
+chain = RetrievalQA.from_chain_type(
+    llm=llm,
+    chain_type="stuff",
+    retriever=vectorstore.as_retriever(),
+)
+
+# chain.run("Where does Winston live?")
+chain.run("Describe Victory Mansions")
+```

@@ -758,6 +758,8 @@ invoke_chain("My name is jinwook")
 
 ## RAG (Retrieval-Augmented Generation)
 
+- 다양한 포맷의 문서 load → split (비용 절감 및 LLM의 성능을 위해) → embedding (text를 의미별로 벡터화 + caching) → RetrivalQA chain 생성 (다양한 chain type)
+
 ```
 "RAG"는 "Retrieval-Augmented Generation"의 약자로, "검색-증강 생성"이라는 의미를 가지고 있습니다. 이는 자연어 처리(NLP) 및 기계 학습 분야, 특히 챗봇이나 질문-응답 시스템과 같은 고급 언어 모델을 구축하는 데 사용되는 기술입니다.
 

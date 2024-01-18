@@ -884,3 +884,139 @@ chain = RetrievalQA.from_chain_type(
 # chain.run("Where does Winston live?")
 chain.run("Describe Victory Mansions")
 ```
+
+- Stuff LCEL Chain
+  | Component    | Input Type                                            | Output Type           |
+  | ------------ | ----------------------------------------------------- | --------------------- |
+  | Prompt       | Dictionary                                            | PromptValue           |
+  | ChatModel    | Single string, list of chat messages or a PromptValue | ChatMessage           |
+  | LLM          | Single string, list of chat messages or a PromptValue | String                |
+  | OutputParser | The output of an LLM or ChatModel                     | Depends on the parser |
+  | Retriever    | Single string                                         | List of Documents     |
+  | Tool         | Single string or dictionary, depending on the tool    | Depends on the tool   |
+  예시에서 `Describe Victory Mansions`를 input으로 받아 Document list를 반환
+  ```python
+  from langchain.chat_models import ChatOpenAI
+  from langchain.storage import LocalFileStore
+  from langchain.document_loaders import UnstructuredFileLoader
+  from langchain.text_splitter import CharacterTextSplitter
+  from langchain.embeddings import OpenAIEmbeddings, CacheBackedEmbeddings
+  from langchain.vectorstores.faiss import FAISS
+  from langchain.prompts import ChatPromptTemplate
+  from langchain.schema.runnable import RunnablePassthrough
+
+  cache_dir = LocalFileStore("./.cache/")
+
+  llm = ChatOpenAI(temperature=0.1)
+
+  text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+      separator="\n",
+      chunk_size=600,
+      chunk_overlap=100,
+  )
+
+  loader = UnstructuredFileLoader("./files/chapter_one.docx")
+
+  documents = loader.load_and_split(text_splitter=text_splitter)
+
+  embeddings = OpenAIEmbeddings()
+
+  cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
+      embeddings,
+      cache_dir,
+  )
+
+  vectorstore = FAISS.from_documents(
+      documents=documents,
+      embedding=cached_embeddings,
+  )
+
+  retriver = vectorstore.as_retriever()
+
+  prompt = ChatPromptTemplate.from_messages(
+      [
+          (
+              "system",
+              """
+  You are a helpful assistant. Answer questions using only the context. If you don't know the answer, just say you don't know, don't make it up:\n\n{context}
+  """,
+          ),
+          ("human", "{question}"),
+      ]
+  )
+
+  chain = {"context": retriver, "question": RunnablePassthrough()} | prompt | llm
+
+  chain.invoke("Describe Victory Mansions")
+  ```
+- \***\*Map Reduce LCEL Chain\*\***
+  ```python
+  map_doc_prompt = ChatPromptTemplate.from_messages(
+      [
+          (
+              "system",
+              """
+              Use the following portion of a long document to see if any of the text is relevant to answer the question. Return any relevant text verbatim. If there is no relevant text, return : ''
+              -------
+              {context}
+              """,
+          ),
+          ("human", "{question}"),
+      ]
+  )
+
+  map_doc_chain = map_doc_prompt | llm
+
+  def map_docs(inputs):
+      documents = inputs["documents"]
+      question = inputs["question"]
+      results = []
+      for document in documents:
+          result = map_doc_chain.invoke(
+              {"context": document.page_content, "question": question}
+          ).content
+          results.append(result)
+      results = "\n\n".join(results)
+      return results
+
+  map_chain = {
+      "documents": retriever,
+      "question": RunnablePassthrough(),
+  } | RunnableLambda(map_docs)
+
+  final_prompt = ChatPromptTemplate.from_messages(
+      [
+          (
+              "system",
+              """
+  Given the following extracted parts of a long document and a question, create a final answer.
+  If you don't know the answer, just say that you don't know. Don't try to make up an answer.
+  -----
+  {context}
+  """,
+          ),
+          ("human", "{question}"),
+      ]
+  )
+
+  chain = {"context": map_chain, "question": RunnablePassthrough()} | final_prompt | llm
+
+  # chain.invoke("Describe Victory Mansions")
+  chain.invoke("Where dos Winston go to work?")
+  ```
+
+## Streamlit
+
+`streamlit run Home.py`
+
+```python
+import streamlit as st
+
+st.title("Hello world!")
+
+st.subheader('Welcome to streamlit')
+
+st.markdown("""
+            ### I love it
+            """)
+```

@@ -1,25 +1,20 @@
 import streamlit as st
-from langchain.prompts import PromptTemplate
 
-st.write("hello")
-
-st.write([1, 2, 3, 4])
-
-st.write({"x": 1})
-
-st.write(PromptTemplate)
-
-st.selectbox(
-    label="Choose your model",
-    options=(
-        "GPT-3.5",
-        "GPT-4",
-    ),
+st.set_page_config(
+    page_title="FullstackGPT | Home",
+    page_icon="🚀",
 )
 
-p = PromptTemplate.from_template("xxx")
-
-st.write(p)
-
-# magic
-p
+st.markdown(
+    """
+# Hello!
+Welcome to my FullstackGPT Portfolio!
+Here are the apps I made:
+- [ ] [DocumentGPT](/DocumentGPT)
+- [ ] [PrivateGPT](/PrivateGPT)
+- [ ] [QuizGPT](/QuizGPT)
+- [ ] [SiteGPT](/SiteGPT)
+- [ ] [MeetingGPT](/MeetingGPT)
+- [ ] [InvestorGPT](/InvestorGPT)
+"""
+)

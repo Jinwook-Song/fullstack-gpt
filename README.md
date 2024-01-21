@@ -775,11 +775,13 @@ RAG에 대한 간략한 개요는 다음과 같습니다:
 [docs](https://python.langchain.com/docs/modules/chains/document/)
 
 - load and split document
+
   - UnstructuredFileLoader 임의의 포맷 문서를 load 할 수 있다
   - RecursiveCharacterTextSplitter
   - CharacterTextSplitter (seperator를 지정할 수 있다)
     - chunk_overlap 이전의 text를 어느정도로 겹치게 나눌지
     - from_tiktoken_encoder: token을 기반으로 모델이 텍스트를 세는것과 동일하게
+
   ```python
   from langchain.document_loaders import UnstructuredFileLoader
   from langchain.text_splitter import CharacterTextSplitter
@@ -796,6 +798,7 @@ RAG에 대한 간략한 개요는 다음과 같습니다:
 
   len(docs)
   ```
+
 - Embedding
   text를 vector로 변환
 
@@ -886,15 +889,16 @@ chain.run("Describe Victory Mansions")
 ```
 
 - Stuff LCEL Chain
-  | Component    | Input Type                                            | Output Type           |
+  | Component | Input Type | Output Type |
   | ------------ | ----------------------------------------------------- | --------------------- |
-  | Prompt       | Dictionary                                            | PromptValue           |
-  | ChatModel    | Single string, list of chat messages or a PromptValue | ChatMessage           |
-  | LLM          | Single string, list of chat messages or a PromptValue | String                |
-  | OutputParser | The output of an LLM or ChatModel                     | Depends on the parser |
-  | Retriever    | Single string                                         | List of Documents     |
-  | Tool         | Single string or dictionary, depending on the tool    | Depends on the tool   |
+  | Prompt | Dictionary | PromptValue |
+  | ChatModel | Single string, list of chat messages or a PromptValue | ChatMessage |
+  | LLM | Single string, list of chat messages or a PromptValue | String |
+  | OutputParser | The output of an LLM or ChatModel | Depends on the parser |
+  | Retriever | Single string | List of Documents |
+  | Tool | Single string or dictionary, depending on the tool | Depends on the tool |
   예시에서 `Describe Victory Mansions`를 input으로 받아 Document list를 반환
+
   ```python
   from langchain.chat_models import ChatOpenAI
   from langchain.storage import LocalFileStore
@@ -949,7 +953,9 @@ chain.run("Describe Victory Mansions")
 
   chain.invoke("Describe Victory Mansions")
   ```
+
 - \***\*Map Reduce LCEL Chain\*\***
+
   ```python
   map_doc_prompt = ChatPromptTemplate.from_messages(
       [
@@ -1019,4 +1025,175 @@ st.subheader('Welcome to streamlit')
 st.markdown("""
             ### I love it
             """)
+
+today = datetime.today().strftime("%H:%M:%S")
+st.title(today)
+
+model = st.selectbox(
+    label="Choose model",
+    options=(
+        "GPT-3.5",
+        "GPT-4",
+    ),
+)
+if model == "GPT-3.5":
+    st.write("cheap")
+else:
+    st.write("expensive")
+
+name = st.text_input("What's your name?")
+st.write(name)
+
+value = st.slider(
+    label="temperature",
+    min_value=-5,
+    max_value=40,
+    step=5,
+)
+st.write(value)
+```
+
+## Document GPT
+
+```python
+import os
+from typing import List
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.chat_models import ChatOpenAI
+from langchain.document_loaders import UnstructuredFileLoader
+from langchain.embeddings import CacheBackedEmbeddings, OpenAIEmbeddings
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema import Document
+from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
+from langchain.storage import LocalFileStore
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.vectorstores.faiss import FAISS
+import streamlit as st
+
+st.set_page_config(page_title="DocumentGPT", page_icon="📃")
+
+class ChatCallbackHandler(BaseCallbackHandler):
+    message = ""
+
+    def on_llm_start(self, *args, **kwargs):
+        self.message_box = st.empty()
+
+    def on_llm_end(self, *args, **kwargs):
+        save_message(self.message, "ai")
+
+    def on_llm_new_token(self, token: str, *args, **kwargs):
+        self.message += token
+        self.message_box.markdown(self.message)
+
+llm = ChatOpenAI(
+    temperature=0.1,
+    streaming=True,
+    callbacks=[
+        ChatCallbackHandler(),
+    ],
+)
+
+@st.cache_data(show_spinner=True)
+def embed_file(file):
+    file_content = file.read()
+    if not os.path.exists("./.cache/files"):
+        os.makedirs("./.cache/files")
+    file_path = f"./.cache/files/{file.name}"
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+
+    cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}")
+    text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+        separator="\n",
+        chunk_size=600,
+        chunk_overlap=100,
+    )
+    loader = UnstructuredFileLoader(file_path)
+    documents = loader.load_and_split(text_splitter=text_splitter)
+    embeddings = OpenAIEmbeddings()
+    cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
+        embeddings,
+        cache_dir,
+    )
+    vectorstore = FAISS.from_documents(
+        documents=documents,
+        embedding=cached_embeddings,
+    )
+    retriever = vectorstore.as_retriever()
+    return retriever
+
+def save_message(message, role):
+    st.session_state["messages"].append({"message": message, "role": role})
+
+def send_message(message, role, save=True):
+    with st.chat_message(role):
+        st.markdown(message)
+    if save:
+        save_message(message, role)
+
+def paint_history():
+    for message in st.session_state["messages"]:
+        send_message(
+            message["message"],
+            message["role"],
+            save=False,
+        )
+
+def format_docs(docs: List[Document]):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+Answer the question using ONLY the following context.
+If you don't know the answer just say you don't know.
+DON'T make anyting up.
+
+Context: {context}
+         """,
+        ),
+        ("human", "{question}"),
+    ]
+)
+
+st.title("DocumentGPT")
+
+st.markdown(
+    """
+Welcom!
+
+Use the chatbot to ask questions to an AI about your files!
+
+Upload your files on the sidebar.
+"""
+)
+
+with st.sidebar:
+    file = st.file_uploader(
+        label="Upload a file(.txt, .pdf, .docs)",
+        type=["pdf", "txt", "docx"],
+    )
+
+if file:
+    retriever = embed_file(file)
+    send_message("I'm ready Ask away!", "ai", save=False)
+    paint_history()
+    message = st.chat_input("Ask anything about this file")
+    if message:
+        send_message(message, "human")
+        chain = (
+            {
+                "context": retriever | RunnableLambda(format_docs),
+                "question": RunnablePassthrough(),
+            }
+            | prompt
+            | llm
+        )
+        with st.chat_message("ai"):
+            response = chain.invoke(message)
+
+else:
+    st.session_state["messages"] = []
 ```

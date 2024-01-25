@@ -1197,3 +1197,17 @@ if file:
 else:
     st.session_state["messages"] = []
 ```
+
+## PrivateGPT
+
+로컬에서 모델 실행
+
+Huggingface에서 다양한 유료/무료 모델을 사용할 수 있다
+
+[Mistral Model](https://huggingface.co/mistralai/Mistral-7B-v0.1), [API](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task), [Docs](https://docs.mistral.ai/)
+
+Instructor model을 사용하는 경우 아래의 가이드 참고
+
+The template used to build a prompt for the Instruct model is defined as follows:
+
+`<s>[INST] Instruction [/INST] Model answer</s>[INST] Follow-up instruction [/INST]`

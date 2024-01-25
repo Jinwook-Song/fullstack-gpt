@@ -1198,9 +1198,7 @@ else:
     st.session_state["messages"] = []
 ```
 
-## PrivateGPT
-
-로컬에서 모델 실행
+## HuggingFace
 
 Huggingface에서 다양한 유료/무료 모델을 사용할 수 있다
 
@@ -1211,3 +1209,53 @@ Instructor model을 사용하는 경우 아래의 가이드 참고
 The template used to build a prompt for the Instruct model is defined as follows:
 
 `<s>[INST] Instruction [/INST] Model answer</s>[INST] Follow-up instruction [/INST]`
+
+```python
+from langchain.llms import HuggingFaceHub
+from langchain.prompts import PromptTemplate
+
+prompt = PromptTemplate.from_template(
+    "[INST] What is the meaning of {word} [/INST]",
+)
+
+llm = HuggingFaceHub(
+    repo_id="mistralai/Mistral-7B-Instruct-v0.2",
+    model_kwargs={
+        "max_new_tokens": 250,
+    },
+)
+
+chain = prompt | llm
+
+chain.invoke({"word": "flutter"})
+```
+
+## PrivateGPT
+
+로컬에서 모델 실행
+
+비교적 작은 사이즈의 `gpt-2` 모델을 사용
+
+gpt-2는 auto complete에 강점이 있다.
+
+```python
+from langchain.llms.huggingface_pipeline import HuggingFacePipeline
+from langchain.prompts import PromptTemplate
+
+prompt = PromptTemplate.from_template(
+    "A {word} is a",
+)
+
+llm = HuggingFacePipeline.from_model_id(
+    model_id="gpt2",
+    task="text-generation",
+    device=-1,  # 0[GPU], -1[CPU(Default)]
+    pipeline_kwargs={
+        "max_new_tokens": 150,
+    },
+)
+
+chain = prompt | llm
+
+chain.invoke({"word": "kimchi"})
+```

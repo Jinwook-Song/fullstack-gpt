@@ -1,9 +1,9 @@
 import os
 from typing import List
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.chat_models import ChatOpenAI
+from langchain.chat_models import ChatOllama
 from langchain.document_loaders import UnstructuredFileLoader
-from langchain.embeddings import CacheBackedEmbeddings, OpenAIEmbeddings
+from langchain.embeddings import CacheBackedEmbeddings, OllamaEmbeddings
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import Document
 from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
@@ -29,9 +29,9 @@ class ChatCallbackHandler(BaseCallbackHandler):
         self.message_box.markdown(self.message)
 
 
-llm = ChatOpenAI(
+llm = ChatOllama(
+    model="mistral:latest",
     temperature=0.1,
-    streaming=True,
     callbacks=[
         ChatCallbackHandler(),
     ],
@@ -47,6 +47,8 @@ def embed_file(file):
     with open(file_path, "wb") as f:
         f.write(file_content)
 
+    if not os.path.exists("./.cache/private_embeddings"):
+        os.makedirs("./.cache/private_embeddings")
     cache_dir = LocalFileStore(f"./.cache/private_embeddings/{file.name}")
     text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
         separator="\n",
@@ -55,7 +57,7 @@ def embed_file(file):
     )
     loader = UnstructuredFileLoader(file_path)
     documents = loader.load_and_split(text_splitter=text_splitter)
-    embeddings = OpenAIEmbeddings()
+    embeddings = OllamaEmbeddings(model="mistral:latest")
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
         embeddings,
         cache_dir,
@@ -92,20 +94,15 @@ def format_docs(docs: List[Document]):
     return "\n\n".join(doc.page_content for doc in docs)
 
 
-prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            """
-Answer the question using ONLY the following context.
+prompt = ChatPromptTemplate.from_template(
+    """
+Answer the question using ONLY the following context and not training data.
 If you don't know the answer just say you don't know.
 DON'T make anyting up.
 
 Context: {context}
+Question: {question}
          """,
-        ),
-        ("human", "{question}"),
-    ]
 )
 
 

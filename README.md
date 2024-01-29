@@ -1234,28 +1234,32 @@ chain.invoke({"word": "flutter"})
 
 로컬에서 모델 실행
 
-비교적 작은 사이즈의 `gpt-2` 모델을 사용
+- PromptTemplate
+  비교적 작은 사이즈의 `gpt-2` 모델을 사용
+  gpt-2는 auto complete에 강점이 있다.
+  ```python
+  from langchain.llms.huggingface_pipeline import HuggingFacePipeline
+  from langchain.prompts import PromptTemplate
 
-gpt-2는 auto complete에 강점이 있다.
+  prompt = PromptTemplate.from_template(
+      "A {word} is a",
+  )
 
-```python
-from langchain.llms.huggingface_pipeline import HuggingFacePipeline
-from langchain.prompts import PromptTemplate
+  llm = HuggingFacePipeline.from_model_id(
+      model_id="gpt2",
+      task="text-generation",
+      device=-1,  # 0[GPU], -1[CPU(Default)]
+      pipeline_kwargs={
+          "max_new_tokens": 150,
+      },
+  )
 
-prompt = PromptTemplate.from_template(
-    "A {word} is a",
-)
+  chain = prompt | llm
 
-llm = HuggingFacePipeline.from_model_id(
-    model_id="gpt2",
-    task="text-generation",
-    device=-1,  # 0[GPU], -1[CPU(Default)]
-    pipeline_kwargs={
-        "max_new_tokens": 150,
-    },
-)
-
-chain = prompt | llm
-
-chain.invoke({"word": "kimchi"})
-```
+  chain.invoke({"word": "kimchi"})
+  ```
+- [GPT4ALL](https://gpt4all.io/index.html)
+  - fine tunning 된 모델들을 직접 모델을 다운받아 사용할 수 있다
+- [Ollama](https://ollama.ai/)
+  - `ollama run {model}` 설치 및 실행
+  -

@@ -1237,6 +1237,7 @@ chain.invoke({"word": "flutter"})
 - PromptTemplate
   비교적 작은 사이즈의 `gpt-2` 모델을 사용
   gpt-2는 auto complete에 강점이 있다.
+
   ```python
   from langchain.llms.huggingface_pipeline import HuggingFacePipeline
   from langchain.prompts import PromptTemplate
@@ -1258,12 +1259,15 @@ chain.invoke({"word": "flutter"})
 
   chain.invoke({"word": "kimchi"})
   ```
+
 - [GPT4ALL](https://gpt4all.io/index.html)
   - fine tunning 된 모델들을 직접 모델을 다운받아 사용할 수 있다
 - [Ollama](https://ollama.ai/)
+
   - `ollama run {model}` 설치 및 실행
   - 모델 교체만으로 동일한 prompt를 실행 시킬 수 있다.
   - `OllamaEmbeddings`, `ChatOllama`
+
   ```python
   import os
   from typing import List
@@ -1403,3 +1407,17 @@ chain.invoke({"word": "flutter"})
   else:
       st.session_state["messages"] = []
   ```
+
+## QuizGPT
+
+- 주요 포인트: `Output Parser`, `Function Calling`
+- [Wikipedia Api](https://python.langchain.com/docs/integrations/retrievers/wikipedia)
+
+```python
+topic = st.text_input(label="Search Wikipedia...")
+        if topic:
+            retriever = WikipediaRetriever(top_k_results=5)  # type: ignore
+            with st.status("Searching wikipedia..."):
+                docs = retriever.get_relevant_documents(topic)
+                st.write(docs)
+```

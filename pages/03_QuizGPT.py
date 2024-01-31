@@ -34,6 +34,22 @@ def split_file(file):
     return documents
 
 
+@st.cache_data(show_spinner="Making quiz...")
+# docs를 hashing할 수 없기 떄문에 topic으로 구분
+def run_quiz_chain(_docs, topic):
+    chain = {"context": questions_chain} | formatting_chain | output_parser
+    return chain.invoke(_docs)
+
+
+@st.cache_data(show_spinner="Searching wikipedia...")
+def wiki_search(term):
+    retriever = WikipediaRetriever(
+        top_k_results=5,
+        # lang="ko",
+    )  # type: ignore
+    return retriever.get_relevant_documents(term)
+
+
 class JsonOutputParser(BaseOutputParser):
     def parse(self, text):
         text = text.replace("```json", "").replace("```", "")
@@ -48,6 +64,40 @@ llm = ChatOpenAI(
     streaming=True,
     callbacks=[StreamingStdOutCallbackHandler()],
 )
+
+questions_prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+You are a helpful assistant that is role playing as a teacher.
+Based ONLY on the following context make 10 questions to test the user's knowledge about the text.
+Each question should have 4 answers, three of them must be incorrect and one should be correct.
+Use (o) to signal the correct answer.
+
+Question examples:
+
+Question: What is the color of the ocean?
+Answers: Red|Yellow|Green|Blue(o)
+
+Question: What is the capital or Georgia?
+Answers: Baku|Tbilisi(o)|Manila|Beirut
+
+Question: When was Avatar released?
+Answers: 2007|2001|2009(o)|1998
+
+Question: Who was Julius Caesar?
+Answers: A Roman Emperor(o)|Painter|Actor|Model
+
+Your turn!
+
+Context: {context}
+""",
+        )
+    ]
+)
+
+questions_chain = {"context": format_docs} | questions_prompt | llm
 
 
 formatting_prompt = ChatPromptTemplate.from_messages(
@@ -177,38 +227,6 @@ formatting_prompt = ChatPromptTemplate.from_messages(
 
 formatting_chain = formatting_prompt | llm
 
-questions_prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            """
-You are a helpful assistant that is role playing as a teacher.
-Based ONLY on the following context make 10 questions to test the user's knowledge about the text.
-Each question should have 4 answers, three of them must be incorrect and one should be correct.
-Use (o) to signal the correct answer.
-
-Question examples:
-
-Question: What is the color of the ocean?
-Answers: Red|Yellow|Green|Blue(o)
-
-Question: What is the capital or Georgia?
-Answers: Baku|Tbilisi(o)|Manila|Beirut
-
-Question: When was Avatar released?
-Answers: 2007|2001|2009(o)|1998
-
-Question: Who was Julius Caesar?
-Answers: A Roman Emperor(o)|Painter|Actor|Model
-
-Your turn!
-
-Context: {context}
-""",
-        )
-    ]
-)
-
 
 ################################################################################
 
@@ -217,6 +235,7 @@ st.set_page_config(page_title="QuizGPT", page_icon="❓")
 st.title("QuizGPT")
 
 with st.sidebar:
+    topic = None
     docs = None
     choice = st.selectbox(
         "Choose what you want to use",
@@ -237,12 +256,8 @@ with st.sidebar:
     else:
         topic = st.text_input(label="Search Wikipedia...")
         if topic:
-            retriever = WikipediaRetriever(
-                top_k_results=5,
-                # lang="ko",
-            )  # type: ignore
-            with st.status("Searching wikipedia..."):
-                docs = retriever.get_relevant_documents(topic)
+            docs = wiki_search(topic)
+
 
 if not docs:
     st.markdown(
@@ -256,11 +271,11 @@ Get started by uploading a file or searching on Wikipedia in the sidebar.
 """
     )
 else:
-    questions_chain = {"context": format_docs} | questions_prompt | llm
-
     start = st.button("Generate Quiz")
 
     if start:
-        chain = {"context": questions_chain} | formatting_chain | output_parser
-        response = chain.invoke(docs)
+        response = run_quiz_chain(
+            docs,
+            topic if topic else file.name,  # type: ignore
+        )
         st.write(response)

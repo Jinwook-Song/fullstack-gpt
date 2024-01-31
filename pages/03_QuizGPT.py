@@ -1,11 +1,12 @@
 import os
+import json
 from typing import List
 from langchain.callbacks import StreamingStdOutCallbackHandler
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.prompts import ChatPromptTemplate
 from langchain.retrievers import WikipediaRetriever
-from langchain.schema import Document
+from langchain.schema import BaseOutputParser, Document
 from langchain.text_splitter import CharacterTextSplitter
 import streamlit as st
 
@@ -32,6 +33,14 @@ def split_file(file):
     documents = loader.load_and_split(text_splitter=text_splitter)
     return documents
 
+
+class JsonOutputParser(BaseOutputParser):
+    def parse(self, text):
+        text = text.replace("```json", "").replace("```", "")
+        return json.loads(text)
+
+
+output_parser = JsonOutputParser()
 
 llm = ChatOpenAI(
     temperature=0.1,
@@ -252,9 +261,6 @@ else:
     start = st.button("Generate Quiz")
 
     if start:
-        questions_response = questions_chain.invoke(docs)
-        st.write(questions_response.content)
-        formatting_response = formatting_chain.invoke(
-            {"context": questions_response.content}
-        )
-        st.write(formatting_response.content)
+        chain = {"context": questions_chain} | formatting_chain | output_parser
+        response = chain.invoke(docs)
+        st.write(response)

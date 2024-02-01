@@ -90,6 +90,7 @@ Question: Who was Julius Caesar?
 Answers: A Roman Emperor(o)|Painter|Actor|Model
 
 Your turn!
+Make 10 different questions
 
 Context: {context}
 """,
@@ -271,11 +272,26 @@ Get started by uploading a file or searching on Wikipedia in the sidebar.
 """
     )
 else:
-    start = st.button("Generate Quiz")
+    response = run_quiz_chain(
+        docs,
+        topic if topic else file.name,  # type: ignore
+    )
+    st.write(response)
+    with st.form(key="questions_form"):
+        for question in response["questions"]:
+            st.write(question["question"])
+            value = st.radio(
+                key=question["question"],
+                label="Select correct answer",
+                options=[answer["answer"] for answer in question["answers"]],
+                index=None,
+            )
+            if {"answer": value, "correct": True} in question["answers"]:
+                st.success("✅")
+            elif value is not None:
+                correct = list(
+                    filter(lambda answer: answer["correct"], question["answers"])
+                )[0]["answer"]
+                st.error(f"❌: {correct}")
 
-    if start:
-        response = run_quiz_chain(
-            docs,
-            topic if topic else file.name,  # type: ignore
-        )
-        st.write(response)
+        button = st.form_submit_button()

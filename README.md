@@ -1421,6 +1421,7 @@ chain.invoke({"word": "flutter"})
                   st.write(docs)
   ```
 - quiz를 생성하는 prompt → formatting prompt → output parser (json) → form ui
+
   ````python
   import os
   import json
@@ -1710,9 +1711,12 @@ chain.invoke({"word": "flutter"})
 
           button = st.form_submit_button()
   ````
+
 - function calling (gpt)
+
   - function들을 제공하고 필요에 따라 사용하도록
   - 예시) 날씨 정보와 같은 실시간 정보는 함수를 통해 실시간 정보를 불러와 사용할 수 있다
+
   ```python
   import json
   from langchain.chat_models import ChatOpenAI
@@ -1759,3 +1763,43 @@ chain.invoke({"word": "flutter"})
 
   get_weather(response["longitude"], response["latitude"])
   ```
+
+## SiteGPT
+
+- AsyncChromiumLoader, Html2TextTransformer
+- site를 load하고 html 문서를 text로 변환하는 과정
+
+```python
+from langchain.document_loaders import AsyncChromiumLoader
+from langchain.document_transformers import Html2TextTransformer
+import streamlit as st
+
+st.set_page_config(page_title="SiteGPT", page_icon="📊")
+
+html2text_transformer = Html2TextTransformer()
+
+################################################################
+st.title("SiteGPT")
+
+st.markdown(
+    """
+# SiteGPT
+
+Ask questions about the content of a website.
+
+Start by writing the URL of the website on the sidebar.
+"""
+)
+
+with st.sidebar:
+    url = st.text_input(
+        "Write down a URL",
+        placeholder="https://example.com",
+    )
+
+if url:
+    loader = AsyncChromiumLoader(urls=[url])
+    docs = loader.load()
+    transformed = html2text_transformer.transform_documents(docs)
+    st.write(transformed)
+```

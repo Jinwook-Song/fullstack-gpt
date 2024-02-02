@@ -1803,3 +1803,14 @@ if url:
     transformed = html2text_transformer.transform_documents(docs)
     st.write(transformed)
 ```
+
+- sitemap loader
+
+```python
+@st.cache_data(show_spinner="Loading website...")
+def load_website(url):
+    loader = SitemapLoader(url)
+    loader.requests_per_second = 5  # 너무 빠르면 차단 당할 수 있다 (default 2)
+    docs = loader.load()
+    return docs
+```

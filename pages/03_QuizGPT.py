@@ -56,8 +56,6 @@ class JsonOutputParser(BaseOutputParser):
         return json.loads(text)
 
 
-output_parser = JsonOutputParser()
-
 llm = ChatOpenAI(
     temperature=0.1,
     model="gpt-3.5-turbo-1106",
@@ -99,7 +97,6 @@ Context: {context}
 )
 
 questions_chain = {"context": format_docs} | questions_prompt | llm
-
 
 formatting_prompt = ChatPromptTemplate.from_messages(
     [
@@ -228,6 +225,7 @@ formatting_prompt = ChatPromptTemplate.from_messages(
 
 formatting_chain = formatting_prompt | llm
 
+output_parser = JsonOutputParser()
 
 ################################################################################
 

@@ -1766,6 +1766,12 @@ chain.invoke({"word": "flutter"})
 
 ## SiteGPT
 
+TODOS
+
+- [ ] Streaming
+- [ ] Memory chat history
+- [ ] Cache (similar) question
+  - [ ] question list에서 유사한 질문을 찾는다
 - AsyncChromiumLoader, Html2TextTransformer
 - site를 load하고 html 문서를 text로 변환하는 과정
 
@@ -1873,9 +1879,25 @@ answers_prompt = ChatPromptTemplate.from_template(
     Question: {question}
 """
 )
-```
 
-```python
+def get_answers(inputs):
+    docs = inputs["docs"]
+    question = inputs["question"]
+    answers_chain = answers_prompt | llm
+    return {
+        "question": question,
+        "answers": [
+            {
+                "answer": answers_chain.invoke(
+                    {"context": doc.page_content, "question": question}
+                ).content,
+                "source": doc.metadata["source"],
+                "date": doc.metadata["lastmod"],
+            }
+            for doc in docs
+        ],
+    }
+
 choose_prompt = ChatPromptTemplate.from_messages(
     [
         (
@@ -1883,11 +1905,24 @@ choose_prompt = ChatPromptTemplate.from_messages(
             """
             Use ONLY the following pre-existing answers to answer the user's question.
             Use the answers that have the highest score (more helpful) and favor the most recent ones.
-            Cite sources and return the sources of the answers as they are, do not change them.
+            Cite sources and return the sources of the answers as they are with Date, do not change them.
             Answers: {answers}
             """,
         ),
         ("human", "{question}"),
     ]
 )
+
+def choose_answer(inputs):
+    answers = inputs["answers"]
+    question = inputs["question"]
+    choose_chain = choose_prompt | llm
+    condensed = "\n\n".join(
+        f'{answer["answer"]}\nSource:{answer["source"]}\nDate{answer["date"]}\n'
+        for answer in answers
+    )
+
+    return choose_chain.invoke(
+        {"question": question, "answers": condensed},
+    )
 ```

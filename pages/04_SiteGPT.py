@@ -66,7 +66,7 @@ choose_prompt = ChatPromptTemplate.from_messages(
             """
             Use ONLY the following pre-existing answers to answer the user's question.
             Use the answers that have the highest score (more helpful) and favor the most recent ones.
-            Cite sources and return the sources of the answers as they are, do not change them.
+            Cite sources and return the sources of the answers as they are with Date, do not change them.
             Answers: {answers}
             """,
         ),

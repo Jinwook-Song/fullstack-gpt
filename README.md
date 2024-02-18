@@ -1941,3 +1941,19 @@ def choose_answer(inputs):
       command = ["ffmpeg", "-i", video_path, "-vn", audio_path]
       subprocess.run(command)
   ```
+- split audio (pydub)
+
+```python
+import math
+
+track = AudioSegment.from_mp3("files/audios/steve_jobs_keynotes_audio.mp3")
+
+tem_minutes = 10 * 60 * 1000
+chunks = math.ceil(len(track) / tem_minutes)
+
+for i in range(chunks):
+    start_time = i * tem_minutes
+    end_time = (i + 1) * tem_minutes
+    chunk = track[start_time:end_time]
+    chunk.export(f"files/audios/chunks/chunk_{str(i).zfill(2)}.mp3", format="mp3")
+```

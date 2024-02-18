@@ -1944,16 +1944,31 @@ def choose_answer(inputs):
 - split audio (pydub)
 
 ```python
-import math
+def split_audio(audio_path, chunks_folder, chunk_size=10):
+    track = AudioSegment.from_mp3(audio_path)
+    chunk_len = chunk_size * 60 * 1000
+    chunks = math.ceil(len(track) / chunk_len)
 
-track = AudioSegment.from_mp3("files/audios/steve_jobs_keynotes_audio.mp3")
+    for i in range(chunks):
+        start_time = i * chunk_len
+        end_time = (i + 1) * chunk_len
+        chunk = track[start_time:end_time]
+        chunk.export(f"{chunks_folder}/chunk_{str(i).zfill(2)}.mp3", format="mp3")
+```
 
-tem_minutes = 10 * 60 * 1000
-chunks = math.ceil(len(track) / tem_minutes)
+- transcribe
 
-for i in range(chunks):
-    start_time = i * tem_minutes
-    end_time = (i + 1) * tem_minutes
-    chunk = track[start_time:end_time]
-    chunk.export(f"files/audios/chunks/chunk_{str(i).zfill(2)}.mp3", format="mp3")
+```python
+import openai
+from glob import glob
+
+def transcribe_chunks(chunk_folder, destination):
+    files = sorted(glob(f"{chunk_folder}/*.mp3"))
+
+    for file in files:
+        with open(file, "rb") as audio_file, open(destination, "a") as text_file:
+            transcript = openai.Audio.transcribe("whisper-1", audio_file)
+            text_file.write(transcript["text"])
+
+transcribe_chunks("./files/audios/chunks", "./files/audios/transcript.txt")
 ```

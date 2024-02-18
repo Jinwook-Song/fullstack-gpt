@@ -1926,3 +1926,18 @@ def choose_answer(inputs):
         {"question": question, "answers": condensed},
     )
 ```
+
+## MeetingGPT
+
+영상 요약
+
+비디오 → 오디오 추출(ffmpeg) → 10분 단위 chunk(split) → speech to text (whisper) → summarize whole content → embed
+
+- 오디도 추출 (ffmpeg) -vn: ignore video
+  `ffmpeg -i input_path -vn output_path`
+  subprocess 로 cli를 실행할 수 있다
+  ```python
+  def extract_audio_from_video(video_path, audio_path):
+      command = ["ffmpeg", "-i", video_path, "-vn", audio_path]
+      subprocess.run(command)
+  ```
